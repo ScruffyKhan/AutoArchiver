@@ -1,5 +1,5 @@
 ######################################################################################  
-#   Auto Archiver - Written By: Elliot Carter
+#   Archiver - Written By: Elliot Carter
 #
 #   This Script takes in several different inputs for directory paths and archives the
 #   folders/files inside based off of the names containing a specific string that represents 
