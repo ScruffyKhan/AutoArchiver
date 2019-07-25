@@ -1,4 +1,4 @@
-DXOTAMLSAutoArchiver(R) version 1.0 07/25/2019
+AutoArchiver(R) version 1.0 07/25/2019
 
 GENERAL USAGE NOTES
 -----------------------
