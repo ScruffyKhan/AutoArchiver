@@ -15,18 +15,19 @@ import glob
 import shutil
 import datetime
 import time
+import itertools
 import zipfile
 from zipfile import ZipFile 
 
 #Variable to delete files after archive 0 if you DO NOT want to delete and 1 if you DO####################
-DELETE_FILES = 0
+DELETE_FILES = 1
 ################################################################################
 
 #List of current PATH_TO_ENVIRONMENT############################################################
-#PATH_TO_ENVIRONMENT = '/usr/local/inet/shared/Thrivent_TAMLS/'
-PATH_TO_ENVIRONMENT = 'C:/TAMLSData/q_thrivent_tamls_dev/'
+PATH_TO_ENVIRONMENT = ''
+#PATH_TO_ENVIRONMENT = ''
 #Current Environment used in naming the zip file i.e. DEV, SYS, ITE, PROD
-ENVIRONMENT = "DEV"
+ENVIRONMENT = "ITE"
 
 ##################################################################################################
 
@@ -76,18 +77,18 @@ PATTERN_DATE_FOR_FILES = ['08..2018',
                         '03..2019',                        
                         '04..2019'] 
 
-#Location where all zip file will be placed withing the current environment by month.. i.e. '//tnfiles002b/ft_cifs_thrivent_tamls$/q_thrivent_tamls_dev/zip_location/MM-YYYY'                     
+#Location where all zip file will be placed withing the current environment by month.. i.e. '//server/environmentName/zip_location/MM-YYYY'                     
 ZIP_LOCATION = 'Zip/'
 
-#List of all zips created
+#List of lists including all zips created and their files i.e.[zip_name,[zip_files]
 ZIPS_CREATED = []
     
 #Creates the name of zip file for folders
 # date = month and year or the files being archived... i.e. 'MM-YYYY'
 # path_to_folder = path leading to but not including the file to be archived... i.e. 'Process/Archive/output/EODPolicy/'
-# path_to_environment = path leading to the environment of the file to be archived.. i.e. //tnfiles002b/ft_cifs_thrivent_tamls$/q_thrivent_tamls_sys/' or 'O:/q_thrivent_tamls_sys/' ##TRAILING / MUST BE INCLUDED IN PATH NAME ##
+# path_to_environment = path leading to the environment of the file to be archived.. i.e. //server/environmentName/'  ##TRAILING / MUST BE INCLUDED IN PATH NAME ##
 #
-#Returns string containing the zip name
+# Returns string containing the zip name
 def get_folder_zip_file_name(date, path_to_folder, path_to_environment):
     #split path_to_folder
     path_to_folder_split = path_to_folder.split('/')    
@@ -99,9 +100,9 @@ def get_folder_zip_file_name(date, path_to_folder, path_to_environment):
 #Creates the name of zip file for files
 # date = month and year or the files being archived... i.e. 'MM-YYYY'
 # path_to_file = path leading to but not including the file to be archived... i.e. 'Process/Archive/output/EODPolicy/'
-# path_to_environment = path leading to the environment of the file to be archived.. i.e. //tnfiles002b/ft_cifs_thrivent_tamls$/q_thrivent_tamls_sys/' or 'O:/q_thrivent_tamls_sys/' ##TRAILING / MUST BE INCLUDED IN PATH NAME ##
+# path_to_environment = path leading to the environment of the file to be archived.. i.e. //server/environmentName/' ##TRAILING / MUST BE INCLUDED IN PATH NAME ##
 #
-#Returns string containing the zip name
+# Returns string containing the zip name
 def get_file_zip_file_name(date,path_to_file,path_to_environment):
     #split path_to_file 
     path_to_file_split = path_to_file.split('/')
@@ -111,11 +112,13 @@ def get_file_zip_file_name(date,path_to_file,path_to_environment):
     return zip_file_name    
     
 #Helper method for txt_files_archive - Takes a list of files and their current directory location and zips them into monthly archives and print out number of files to be archived
-# files_list = a list of paths to each file found matching current pattern... i.e. ['//tnfiles002b/ft_cifs_thrivent_tamls$/q_thrivent_tamls_dev/Process/Archive/output/Events\\EventContract_Output_BankInfo_11282018_00001.txt', .....]               
-# directory = path to current directory being searched... i.e.  //tnfiles002b/ft_cifs_thrivent_tamls$/q_thrivent_tamls_dev/Process/Archive/output/Events/ 
-# environment = path to current environment... i.e.  //tnfiles002b/ft_cifs_thrivent_tamls$/q_thrivent_tamls_dev/
+# files_list = a list of paths to each file found matching current pattern... i.e. ['//server/environmentName/Process/Archive/output/Events\\Event800001.txt', .....]               
+# directory = path to current directory being searched... i.e.  //server/environmentName/Process/Archive/output/Events/ 
+# environment = path to current environment... i.e.  //server/environmentName/
 # path_to_file = path to current file within current environment... i.e. Process/Archive/output/Events/
-def montly_archives_file_list(files_list,directory,environment,path_to_file): 
+def montly_archives_file_list(files_list,directory,environment,path_to_file):
+    #var to hold boolean for deleting the folder containing the files
+    delete_folder = 0
     #var to hold total number of files found
     total_files = 0
     #var to hold zip name
@@ -134,56 +137,79 @@ def montly_archives_file_list(files_list,directory,environment,path_to_file):
                 num_files += 1
                 total_files += 1
         if num_files != 0:
-            print('Files found in ' + directory + ': ' + str(num_files) + ' for date: ' + real_date)
             #archive the files
-            archive_files(files_to_archive,directory,zip_file_name,environment,real_date)                   
+            archive_files(files_to_archive,directory,zip_file_name,environment,real_date,delete_folder)                   
 
 
 #Takes a list of files their current directory the name of a zip and the location where the zips are to be placed and zips them all up and places them in specified directory           
-# file_list = a list of paths to each file found matching the current patern... i.e.  ['//tnfiles002b/ft_cifs_thrivent_tamls$/q_thrivent_tamls_dev/Process/Archive/output/Events\\EventContract_Output_BankInfo_11282018_00001.txt',...]
-# directory = path to current directory being searched... i.e.  //tnfiles002b/ft_cifs_thrivent_tamls$/q_thrivent_tamls_dev/Process/Archive/output/Events/ 
+# file_list = a list of paths to each file found matching the current patern... i.e.  ['//server/environmentName/Process/Archive/output/Events\\EventCo18_00001.txt',...]
+# directory = path to current directory being searched... i.e.  //server/environmentName/Process/Archive/output/Events/ 
 # zip_file_name = the name of the file to be zipped... i.e.  DEVInputEODPolicyFiltered-09-2018.zip
-# environment = path to current environment... i.e.   //tnfiles002b/ft_cifs_thrivent_tamls$/q_thrivent_tamls_dev/
+# environment = path to current environment... i.e.   //server/environmentName/
 # date = date of current search... i.e. MM-YYYY
-def archive_files(file_list,directory,zip_file_name,environment,date):
+# delete_folder = boolean to delete the folder the files are in (1) or not (0)
+def archive_files(file_list,directory,zip_file_name,environment,date,delete_folder):
     zip_location = environment + ZIP_LOCATION + date + '/'
     orig_zip_file_name = zip_file_name
-    zip_file_name = zip_location + zip_file_name         
-    # printing the list of all files to be zipped 
-    print('Following files will be zipped:') 
-    for file in file_list: 
-        print(file)
-    print('Create zip file named: ' + zip_file_name)
+    zip_file_name = zip_location + zip_file_name
+    #temp list for the files added to the zip
+    temp_zip_file_list = []
+    #current time to print at beginning of every output line
+    now = str(datetime.datetime.now()) + "  -  "
+    print(now + 'Create zip file named: ' + zip_file_name)
     if not os.path.exists(zip_location):
         os.makedirs(zip_location)
-    # writing files to a zipfile 
-    # variable for deleting the directory found after the archive
+    #writing files to a zipfile 
+    #variable for deleting the directory found after the archive
     dirToRemove =  ''
-    for file in file_list:
-        newZip = None
-        try:
-            newZip = zipfile.ZipFile(zip_file_name, 'w',zipfile.ZIP_DEFLATED)
+    newZip = None
+    try:
+        newZip = zipfile.ZipFile(zip_file_name, 'w',zipfile.ZIP_DEFLATED)
+        for file in file_list:           
             newZip.write(file)
-            dirToRemove = os.path.split(file)[0] 
+            temp_zip_file_list.append(file)
+        
+    finally:
+        newZip.close() 
 
-            ############THIS NEXT LINES DELETE THE FILES AND EMPTY FOLDERS THAT HAVE JUST BEEN ARCHIVED##############
-            if DELETE_FILES == 1:
+    ############THIS NEXT LINES DELETE THE FILES AND EMPTY FOLDERS THAT HAVE JUST BEEN ARCHIVED##############
+    if DELETE_FILES == 1:
+        for file in file_list:
+            dirToRemove = os.path.split(file)[0] 
+            try:
                 os.remove(file)
-                if not os.listdir(dirToRemove):
-                    shutil.rmtree(dirToRemove)
-            ########################################################################################
+            except OSError as e: # name the Exception `e`
+                #current time to print at beginning of every output line
+                now = str(datetime.datetime.now()) + "  -  "
+                print (now + "Failed with:", e.strerror) # look what it says
+                print (now + "Error code:", e.code)
+            #if directory is empty and we want to delete the base folder
+            if not os.listdir(dirToRemove):
+                if dirToRemove:
+                    try:
+                        shutil.rmtree(dirToRemove)
+                    except Exception as e:
+                        #current time to print at beginning of every output line
+                        now = str(datetime.datetime.now()) + "  -  "
+                        print(now + ' ' + e)
+                        raise
+    ########################################################################################
             
-        finally:
-            newZip.close()                     
-    ZIPS_CREATED.append(str(orig_zip_file_name))        
-    print('All files zipped successfully!')  
+    temp_array = [str(orig_zip_file_name),temp_zip_file_list]                
+    ZIPS_CREATED.append(temp_array)
+    #FILES_IN_ZIP.append(temp_zip_file_list)
+    #current time to print at beginning of every output line
+    now = str(datetime.datetime.now()) + "  -  "
+    print(now + 'All files zipped successfully!')  
     print(" ")              
         
 #Searches through all directories in the PATH_TO_FOLDERS list for any folders matching the PATTERN_DATE_FOR_FOLDERS list and archives 
-#them by path and pattern and places them into the ZIP_LOCATION + MM-YYYY of the current environment.
+# them by path and pattern and places them into the ZIP_LOCATION + MM-YYYY of the current environment.
 #
-#Returns Total Number of files found      
+# Returns Total Number of files found      
 def folders_archive():
+    #var to hold boolean for deleting the folder containing the files
+    delete_folder = 1
     #Total files found
     total_files = 0
     #loop through all dates in the dates to archive
@@ -210,21 +236,20 @@ def folders_archive():
                 for folder in curr_dir_folders:
                     #check all dates against the folder name
                     if re.search(date,folder):
-                        #create pattern looking for all xml files in the current folder
-                        glob_pattern = full_path + folder +  "/*.xml"
-                        print(glob_pattern)
+                        #create pattern looking for all files in the current folder
+                        glob_pattern = full_path + folder +  "/*"
                         #add all files found to the file_list var
                         file_list += glob.glob(glob_pattern)            
                         num_folders += 1
                 #if folders are found containing files print where they were found and archive them
                 if(num_folders > 0):                        
-                    print('Folders found in ' + full_path + ': ' + str(num_folders) + ' for date: ' + real_date)
-                    print(" ")
                     #archiving will happen in this function call
-                    archive_files(file_list,full_path,zip_file_name,environment,real_date)
+                    archive_files(file_list,full_path,zip_file_name,environment,real_date,delete_folder)
                 total_files += num_folders
             else:
-                print(full_path + ' does not exist.') 
+                #current time to print at beginning of every output line
+                now = str(datetime.datetime.now()) + "  -  "
+                print(now + full_path + ' does not exist.') 
                 print(' ')
     return total_files
 
@@ -245,7 +270,9 @@ def csv_files_archive():
             #archiving will happen in this function call
             montly_archives_file_list(file_list,directory,environment,csv)
         else:
-            print(directory + ' does not exist.')
+            #current time to print at beginning of every output line
+            now = str(datetime.datetime.now()) + "  -  "
+            print(now + directory + ' does not exist.')
 
 #Archives all txt files in the PATH_TO_TXT in every PATH_TO_ENVIRONMENT into monthly archives     
 def txt_files_archive():      
@@ -264,7 +291,9 @@ def txt_files_archive():
             #archiving will happen in this function call
             montly_archives_file_list(file_list,directory,environment,txt)              
         else:
-            print(directory + ' does not exist.')                
+            #current time to print at beginning of every output line
+            now = str(datetime.datetime.now()) + "  -  "
+            print(now + directory + ' does not exist.')                
         
 #Runs the Program        
 def main():
@@ -272,9 +301,28 @@ def main():
     csv_files_archive()
     txt_files_archive()
     #Print summary of files archived
-    print(str(len(ZIPS_CREATED)) + ' zipped archives created. See Below:')
-    for x in sorted(ZIPS_CREATED): 
-        print (x)    
+    print('')
+    print('')
+    print('')
+    print('')
+    print('')
+    #current time to print at beginning of every output line
+    now = str(datetime.datetime.now()) + "  -  "
+    print(now + str(len(ZIPS_CREATED)) + ' zipped archives created. See Below:')
+    
+    for list in sorted(ZIPS_CREATED):
+        #current time to print at beginning of every output line
+        now = str(datetime.datetime.now()) + "  -  "
+        print (now + list[0]) 
+        print (now + 'with files')                   
+        for file in list[1]:
+            #current time to print at beginning of every output line
+            now = str(datetime.datetime.now()) + "  -  "
+            print (now + file)
+        #current time to print at beginning of every output line
+        now = str(datetime.datetime.now()) + "  -  "
+        print(now + str(len(list[1])) + ' files zipped')
+        
     return 0
 
 #needed to run main    

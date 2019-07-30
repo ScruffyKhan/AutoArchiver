@@ -65,19 +65,19 @@ PATTERN_DATE_FOR_FILES = ['08..2018',
                         '05..2019'
                         '06..2019']
 
-#Location where all zip file will be placed withing the current environment by month.. i.e. '//tnfiles002b/ft_cifs_thrivent_tamls$/q_thrivent_tamls_dev/zip_location/MM-YYYY'                     
+#Location where all zip file will be placed withing the current environment by month.. i.e. '//server/environmentName/zip_location/MM-YYYY'                     
 ZIP_LOCATION = 'Zip/'
     
 #Creates the name of zip file for folders
 # date = month and year or the files being archived... i.e. 'MM-YYYY'
 # path_to_folder = path leading to but not including the file to be archived... i.e. 'Process/Archive/output/EODPolicy/'
-# path_to_environment = path leading to the environment of the file to be archived.. i.e. //tnfiles002b/ft_cifs_thrivent_tamls$/q_thrivent_tamls_sys/' or 'O:/q_thrivent_tamls_sys/' ##TRAILING / MUST BE INCLUDED IN PATH NAME ##
+# path_to_environment = path leading to the environment of the file to be archived.. i.e. //server/environmentName/ or 'O:/environmentName/ ##TRAILING / MUST BE INCLUDED IN PATH NAME ##
 #
 #Returns string containing the zip name
 def get_folder_zip_file_name(date, path_to_folder, path_to_envionment):
     #split path_to_folder
     path_to_folder_split = path_to_folder.split('/')    
-    #split environment_directory and then grab only the environment name i.e. q_thrivent_tamls_dev and take the last 3 letter to get DEV
+    #split environment_directory and then grab only the environment name i.e. /environmentNamedev/ and take the last 3 letter to get DEV
     environment_directory_split = path_to_envionment.split('/') 
     environment = environment_directory_split[-2] # This is why the following / in the path name is important! If it is not there the -2 needs to be -1
     environment = environment[-3:].upper()
@@ -89,13 +89,13 @@ def get_folder_zip_file_name(date, path_to_folder, path_to_envionment):
 #Creates the name of zip file for files
 # date = month and year or the files being archived... i.e. 'MM-YYYY'
 # path_to_file = path leading to but not including the file to be archived... i.e. 'Process/Archive/output/EODPolicy/'
-# path_to_environment = path leading to the environment of the file to be archived.. i.e. //tnfiles002b/ft_cifs_thrivent_tamls$/q_thrivent_tamls_sys/' or 'O:/q_thrivent_tamls_sys/' ##TRAILING / MUST BE INCLUDED IN PATH NAME ##
+# path_to_environment = path leading to the environment of the file to be archived.. i.e. //server/environmentName/' or 'O://environmentName//' ##TRAILING / MUST BE INCLUDED IN PATH NAME ##
 #
 #Returns string containing the zip name
 def get_file_zip_file_name(date,path_to_file,path_to_envionment):
     #split path_to_file 
     path_to_file_split = path_to_file.split('/')
-    #split environment_directory and then grab only the environment name i.e. q_thrivent_tamls_dev and take the last 3 letter to get DEV
+    #split environment_directory and then grab only the environment name i.e. /environmentNamedev/ and take the last 3 letter to get DEV
     environment_directory_split = path_to_envionment.split('/') 
     environment = environment_directory_split[-2]  # This is why the following / in the path name is important! If it is not there the -2 needs to be -1
     environment = environment[-3:].upper()   
@@ -105,9 +105,9 @@ def get_file_zip_file_name(date,path_to_file,path_to_envionment):
     return zip_file_name    
     
 #Helper method for txt_files_archive - Takes a list of files and their current directory location and zips them into monthly archives and print out number of files to be archived
-# files_list = a list of paths to each file found matching current pattern... i.e. ['//tnfiles002b/ft_cifs_thrivent_tamls$/q_thrivent_tamls_dev/Process/Archive/output/Events\\EventContract_Output_BankInfo_11282018_00001.txt', .....]               
-# directory = path to current directory being searched... i.e.  //tnfiles002b/ft_cifs_thrivent_tamls$/q_thrivent_tamls_dev/Process/Archive/output/Events/ 
-# environment = path to current environment... i.e.  //tnfiles002b/ft_cifs_thrivent_tamls$/q_thrivent_tamls_dev/
+# files_list = a list of paths to each file found matching current pattern... i.e. ['//server/environmentName/Process/Archive/output/Events\\EventContract_Output_BankInfo_11282018_00001.txt', .....]               
+# directory = path to current directory being searched... i.e.  ///server/environmentName/Process/Archive/output/Events/ 
+# environment = path to current environment... i.e.  //server/environmentName/
 # path_to_file = path to current file within current environment... i.e. Process/Archive/output/Events/
 def montly_archives_file_list(files_list,directory,environment,path_to_file): 
     #var to hold total number of files found
@@ -138,10 +138,10 @@ def montly_archives_file_list(files_list,directory,environment,path_to_file):
         print('Files found in ' + directory + ' but they do not match any of the dates.')
 
 #Takes a list of files their current directory the name of a zip and the location where the zips are to be placed and zips them all up and places them in specified directory           
-# file_list = a list of paths to each file found matching the current patern... i.e.  ['//tnfiles002b/ft_cifs_thrivent_tamls$/q_thrivent_tamls_dev/Process/Archive/output/Events\\EventContract_Output_BankInfo_11282018_00001.txt',...]
-# directory = path to current directory being searched... i.e.  //tnfiles002b/ft_cifs_thrivent_tamls$/q_thrivent_tamls_dev/Process/Archive/output/Events/ 
+# file_list = a list of paths to each file found matching the current patern... i.e.  ['//server/environmentName/Process/Archive/output/Events\\EventContract_Output_BankInfo_11282018_00001.txt',...]
+# directory = path to current directory being searched... i.e.  //server/environmentName/Process/Archive/output/Events/ 
 # zip_file_name = the name of the file to be zipped... i.e.  DEVInputEODPolicyFiltered-09-2018.zip
-# environment = path to current environment... i.e.   //tnfiles002b/ft_cifs_thrivent_tamls$/q_thrivent_tamls_dev/
+# environment = path to current environment... i.e.   //server/environmentName/
 # date = date of current search... i.e. MM-YYYY
 def archive_files(file_list,directory,zip_file_name,environment,date):
     zip_location = environment + ZIP_LOCATION + date + '/'
